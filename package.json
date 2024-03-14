@@ -79,7 +79,13 @@
     "webpack-livereload-plugin": "^3.0.2"
   },
   "dependencies": {
-    "@grafana/experimental": "1.7.3"
+    "@aws-sdk/client-iotsitewise": "^3.529.1",
+    "@cloudscape-design/collection-hooks": "^1.0.38",
+    "@cloudscape-design/components": "^3.0.569",
+    "@cloudscape-design/design-tokens": "^3.0.34",
+    "@cloudscape-design/global-styles": "^1.0.24",
+    "@grafana/experimental": "1.7.3",
+    "@tanstack/react-query": "^4.29.15"
   },
   "resolutions": {
     "rxjs": "6.6.3",

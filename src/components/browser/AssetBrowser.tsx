@@ -5,9 +5,12 @@ import { DataSource } from 'DataSource';
 import { SitewiseCache } from 'sitewiseCache';
 import { BrowseModels } from './BrowseModels';
 import { BrowseHierarchy } from './BrowseHierarchy';
+import { ResourceExplorer } from 'components/queryEditor';
+import { type DataSource as QED } from 'components/queryEditor/types';
 
 export interface Props {
   datasource: DataSource;
+  ds: QED;
   assetId?: string; // The incoming value
   region?: string;
   onAssetChanged: (assetId?: string) => void;
@@ -18,6 +21,7 @@ interface State {
   tab: 'Modal' | 'Hierarchy';
   cache?: SitewiseCache;
   asset?: AssetInfo;
+  selectedAssetId?: string;
 }
 
 export const ModalHeader = () => {
@@ -103,21 +107,11 @@ export class AssetBrowser extends Component<Props, State> {
           Explore
         </Button>
         <Modal title={<ModalHeader />} isOpen={isOpen} onDismiss={() => this.setState({ isOpen: false })}>
-          <div>
-            <div>
-              <TabsBar>
-                <Tab
-                  label={'Hierarchy'}
-                  active={'Hierarchy' === tab}
-                  onChangeTab={() => this.setState({ tab: 'Hierarchy' })}
-                />
-                <Tab label={'By Model'} active={'Modal' === tab} onChangeTab={() => this.setState({ tab: 'Modal' })} />
-              </TabsBar>
-              <TabContent style={{ maxHeight: '90vh' }}>
-                <div>{this.renderBody()}</div>
-              </TabContent>
-            </div>
-          </div>
+          <ResourceExplorer
+            onSelect={(asset) => this.setState({ selectedAssetId: asset?.id })}
+            dataSource={this.props.ds}
+          />
+          <Button onClick={() => this.onSelectAsset(this.state.selectedAssetId)}>Add</Button>
         </Modal>
       </>
     );

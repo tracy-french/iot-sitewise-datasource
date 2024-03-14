@@ -1,6 +1,7 @@
 import defaults from 'lodash/defaults';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
+
 import { DataSource } from 'DataSource';
 import { SitewiseQuery, SitewiseOptions, QueryType, ListAssetsQuery } from 'types';
 import { Icon, InlineField, LinkButton, Select } from '@grafana/ui';
@@ -11,6 +12,46 @@ import { PropertyQueryEditor } from './PropertyQueryEditor';
 import { EditorField, EditorFieldGroup, EditorRow, EditorRows } from '@grafana/experimental';
 import { config } from '@grafana/runtime';
 
+import '@cloudscape-design/global-styles/index.css';
+
+import { useTheme2 } from '@grafana/ui';
+import { Mode, applyMode } from '@cloudscape-design/global-styles';
+import { applyTheme } from '@cloudscape-design/components/theming';
+
+function useTheme() {
+  const theme = useTheme2();
+
+  useEffect(() => {
+    applyTheme({
+      theme: {
+        tokens: {
+          borderRadiusButton: '2px',
+          borderRadiusContainer: '3px',
+          borderRadiusInput: '2px',
+          borderRadiusDropdown: '2px',
+          colorBackgroundContainerHeader: {
+            light: '#ffffff',
+            dark: 'rgb(24, 27, 31)',
+          },
+          colorBackgroundContainerContent: {
+            light: '#ffffff',
+            dark: 'rgb(24, 27, 31)',
+          },
+          fontFamilyBase: '"Roboto", "Helvetica", "Arial", sans-serif',
+        },
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    if (theme.isDark) {
+      applyMode(Mode.Dark);
+    } else {
+      applyMode(Mode.Light);
+    }
+  }, [theme.isDark]);
+}
+
 type Props = QueryEditorProps<DataSource, SitewiseQuery, SitewiseOptions>;
 
 const queryDefaults: Partial<SitewiseQuery> = {
@@ -20,6 +61,8 @@ const queryDefaults: Partial<SitewiseQuery> = {
 export const firstLabelWith = 20;
 
 export function QueryEditor(props: Props) {
+  useTheme();
+
   const newFormStylingEnabled = config.featureToggles.awsDatasourcesNewFormStyling;
 
   const { datasource } = props;

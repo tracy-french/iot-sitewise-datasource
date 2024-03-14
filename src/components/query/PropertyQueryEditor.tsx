@@ -32,6 +32,7 @@ import { firstLabelWith } from './QueryEditor';
 import { EditorField, EditorFieldGroup, EditorRow } from '@grafana/experimental';
 import { css } from '@emotion/css';
 import { QueryOptions } from './QueryOptions';
+import { DataSource } from 'components/queryEditor/types';
 
 interface Props
   extends SitewiseQueryEditorProps<SitewiseQuery | AssetPropertyAggregatesQuery | ListAssociatedAssetsQuery> {
@@ -67,6 +68,16 @@ export class PropertyQueryEditor extends PureComponent<Props, State> {
     loading: true,
     openModal: false,
   };
+
+  getQED(): DataSource {
+    const cache = this.props.datasource.getCache(this.props.query.region);
+
+    return {
+      describeAsset: cache.describeAsset,
+      listAssets: cache.listAssets,
+      listAssociatedAssets: cache.listAssociatedAssets,
+    };
+  }
 
   async updateInfo() {
     const { query, datasource } = this.props;
@@ -402,6 +413,7 @@ export class PropertyQueryEditor extends PureComponent<Props, State> {
 
                 <div className={styles.exploreContainer}>
                   <AssetBrowser
+                    ds={this.getQED()}
                     datasource={datasource}
                     region={query.region}
                     assetId={query.assetIds?.[0]}
@@ -491,6 +503,7 @@ export class PropertyQueryEditor extends PureComponent<Props, State> {
                 />
               </InlineField>
               <AssetBrowser
+                ds={this.getQED()}
                 datasource={datasource}
                 region={query.region}
                 assetId={query.assetIds?.[0]}

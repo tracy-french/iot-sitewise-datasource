@@ -5,6 +5,19 @@ import { AssetModelSummary, AssetSummary, DescribeAssetResult } from './queryRes
 import { AssetInfo, AssetPropertyInfo } from './types';
 import { map } from 'rxjs/operators';
 import { getTemplateSrv } from '@grafana/runtime';
+import {
+  AssetErrorDetails,
+  AssetHierarchy,
+  AssetProperty,
+  AssetPropertySummary,
+  AssetState,
+  DescribeAssetRequest,
+  DescribeAssetResponse,
+  ListAssetsRequest,
+  ListAssetsResponse,
+  ListAssociatedAssetsRequest,
+  ListAssociatedAssetsResponse,
+} from '@aws-sdk/client-iotsitewise';
 
 /**
  * Keep a different cache for each region
@@ -15,6 +28,136 @@ export class SitewiseCache {
   private topLevelAssets?: DataFrameView<AssetSummary>;
 
   constructor(private ds: DataSource, private region: string) {}
+
+  listAssets = async ({ assetModelId, filter = 'TOP_LEVEL' }: ListAssetsRequest): Promise<ListAssetsResponse> => {
+    const query: ListAssetsQuery = {
+      refId: 'getAssetsOfType',
+      queryType: QueryType.ListAssets,
+      filter,
+      modelId: assetModelId,
+      region: this.region,
+    };
+
+    const res = await this.ds
+      .runQuery(query, 1000)
+      .pipe(
+        map((res) => {
+          if (res.data.length) {
+            this.topLevelAssets = new DataFrameView<AssetSummary>(res.data[0]);
+            return this.topLevelAssets;
+          }
+          throw 'no assets found';
+        })
+      )
+      .toPromise();
+
+    const assets: ListAssetsResponse['assetSummaries'] = res.map(
+      ({ name, id, model_id, arn, creation_date, last_update, state, error, hierarchies }) => ({
+        name,
+        id,
+        assetModelId: model_id,
+        arn,
+        creationDate: creation_date as unknown as Date,
+        lastUpdateDate: last_update as unknown as Date,
+        hierarchies: hierarchies as unknown as AssetHierarchy[],
+        status: {
+          state: state as AssetState,
+        },
+      })
+    );
+
+    return {
+      assetSummaries: assets,
+    };
+  };
+
+  listAssociatedAssets = async ({
+    assetId,
+    hierarchyId,
+  }: ListAssociatedAssetsRequest): Promise<ListAssociatedAssetsResponse> => {
+    const query: ListAssociatedAssetsQuery = {
+      queryType: QueryType.ListAssociatedAssets,
+      refId: 'associatedAssets',
+      assetId: assetId,
+      hierarchyId: hierarchyId,
+      region: this.region,
+    };
+
+    const res = await this.ds
+      .runQuery(query, 1000)
+      .pipe(
+        map((res) => {
+          if (res.data.length) {
+            return new DataFrameView<AssetSummary>(res.data[0]);
+          } else {
+            throw 'no asset hierarchy found';
+          }
+        })
+      )
+      .toPromise();
+
+    const assets: ListAssociatedAssetsResponse['assetSummaries'] = res.map(
+      ({ name, id, model_id, arn, creation_date, last_update, state, error, hierarchies }) => ({
+        name,
+        id,
+        assetModelId: model_id,
+        arn,
+        creationDate: creation_date as unknown as Date,
+        lastUpdateDate: last_update as unknown as Date,
+        hierarchies: hierarchies as unknown as AssetHierarchy[],
+        status: {
+          state: state as AssetState,
+        },
+      })
+    );
+
+    return {
+      assetSummaries: assets,
+    };
+  };
+
+  describeAsset = async ({ assetId }: DescribeAssetRequest): Promise<DescribeAssetResponse> => {
+    const res = await this.ds
+      .runQuery(
+        {
+          refId: 'getAssetInfo',
+          queryType: QueryType.DescribeAsset,
+          assetId,
+          region: this.region,
+        },
+        1000
+      )
+      .pipe(
+        map((res) => {
+          if (res.data.length) {
+            return new DataFrameView<DescribeAssetResult>(res.data[0]);
+          }
+          throw 'asset not found';
+        })
+      )
+      .toPromise();
+
+    const cleanRes = res.map((res) => res)[0];
+
+    const asset: DescribeAssetResponse = {
+      assetId: cleanRes.id,
+      assetArn: cleanRes.arn,
+      assetName: cleanRes.name,
+      assetModelId: cleanRes.model_id,
+      assetProperties: cleanRes.properties as unknown as AssetProperty[],
+      // @ts-ignore
+      assetHierarchies: (JSON.parse(cleanRes.hierarchies) as unknown).map(({ Name, Id }) => ({ name: Name, id: Id })),
+      assetCreationDate: cleanRes.creation_date as unknown as Date,
+      assetLastUpdateDate: cleanRes.last_update as unknown as Date,
+      assetStatus: {
+        state: cleanRes.state as AssetState,
+      },
+    };
+
+    console.log('Described asset', asset);
+
+    return asset;
+  };
 
   async getAssetInfo(id: string): Promise<AssetInfo> {
     const v = this.assetsById.get(id);
